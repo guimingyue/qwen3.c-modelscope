@@ -286,14 +286,16 @@ def build_prompts(model, file):
 def load_hf_model(model_path):
 
     try:
-        from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+        from transformers import AutoTokenizer
+        from modelscope.models import Model
+        from pathlib import Path
     except ImportError:
         print("Error: transformers package is required to load huggingface models")
         print("Please run `pip install transformers` to install it")
         return None
 
     # load HF model
-    hf_model = AutoModelForCausalLM.from_pretrained(model_path)
+    hf_model = Model.from_pretrained(model_path)
     hf_dict = hf_model.state_dict()
 
     # convert config to ModelArgs
@@ -317,7 +319,7 @@ def load_hf_model(model_path):
     model.tok_embeddings.weight = nn.Parameter(hf_dict["model.embed_tokens.weight"])
     model.norm.weight = nn.Parameter(hf_dict["model.norm.weight"])
 
-    model.tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model.tokenizer = AutoTokenizer.from_pretrained(Path(hf_model.model_dir))
     model.bos_token_id = hf_model.config.bos_token_id if hasattr(hf_model.config, "bos_token_id") else 0
     model.eos_token_id = hf_model.config.eos_token_id if hasattr(hf_model.config, "eos_token_id") else 0
 
@@ -368,14 +370,17 @@ def load_hf_model(model_path):
 
 if __name__ == "__main__":
 
+    
     parser = argparse.ArgumentParser()
     parser.add_argument("filepath", type=str, help="the output filepath")
     parser.add_argument("hfpath", type=str, help="huggingface model path")
     args = parser.parse_args()
-
-    model = load_hf_model(args.hfpath)
+    
+    hfpath = args.hfpath
+    filepath = args.filepath
+    model = load_hf_model(hfpath)
 
     # export
-    build_tokenizer(model, args.filepath)
-    build_prompts(model, args.filepath)
-    model_export(model, args.filepath)
+    build_tokenizer(model, filepath)
+    build_prompts(model, filepath)
+    model_export(model, filepath)
